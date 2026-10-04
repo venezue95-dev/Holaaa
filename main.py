@@ -970,11 +970,11 @@ def processFile(update,bot,message,file,thread=None):
             
         file_size = get_file_size(file)
         getUser = get_user_info(username)
-        # El límite efectivo es el menor entre la cuota configurada para la
-        # nube y CHUNK_SIZE_MB. Así los archivos grandes se dividen en
-        # volúmenes manejables antes de subirlos a Moodle.
+        # Cada nube usa su propio límite configurado como tamaño máximo de
+        # parte. Así un archivo menor que la cuota se sube en una sola pieza,
+        # mientras que los archivos mayores se dividen según esa nube.
         configured_limit = 1024 * 1024 * int(getUser.get('zips', 250))
-        max_file_size = min(configured_limit, CHUNK_SIZE_MB * 1024 * 1024)
+        max_file_size = configured_limit
         file_upload_count = 0
         upload_result = None
         

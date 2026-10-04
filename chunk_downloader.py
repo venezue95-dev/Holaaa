@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Descarga y reconstruye un código ETCHUNK1.
+"""Descarga y reconstruye un código con prefijo https://5.4.3.2.1.
 
 Uso:
-    python chunk_downloader.py 'ETCHUNK1:...'
-    python chunk_downloader.py 'ETCHUNK1:...' -o archivo_salida.bin
+    python chunk_downloader.py 'https://5.4.3.2.1...' 
+    python chunk_downloader.py 'https://5.4.3.2.1...' -o archivo_salida.bin
 """
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from chunk_code import download_code, parse_code
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Reconstruye archivos desde un código de chunks")
-    parser.add_argument("code", help="Código ETCHUNK1 generado por el bot")
+    parser.add_argument("code", help="Código https://5.4.3.2.1 generado por el bot")
     parser.add_argument("-o", "--output", help="Ruta de salida; por defecto usa el nombre original")
     args = parser.parse_args()
 

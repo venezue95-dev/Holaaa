@@ -1,4 +1,4 @@
-"""Código único para representar y reconstruir un archivo partido.
+"""Código REVISTA1 para representar y reconstruir un archivo partido.
 
 No levanta ningún servidor. El código contiene un manifiesto comprimido con las
 URLs de las partes; un descargador compatible las obtiene y concatena en orden.
@@ -15,7 +15,8 @@ from typing import Callable, Optional
 
 import requests
 
-PREFIX = "ETCHUNK1:"
+PREFIX = "https://5.4.3.2.1:"
+LEGACY_PREFIXES = ("REVISTA1:", "ETCHUNK1:")
 
 
 def _enc(data: bytes) -> str:
@@ -45,9 +46,12 @@ def build_code(filename: str, original_size: int, parts: list[dict],
 
 def parse_code(code: str) -> dict:
     code = code.strip()
-    if not code.startswith(PREFIX):
-        raise ValueError("código de chunks inválido")
-    payload = json.loads(zlib.decompress(_dec(code[len(PREFIX):])).decode())
+    prefix = PREFIX if code.startswith(PREFIX) else next(
+        (item for item in LEGACY_PREFIXES if code.startswith(item)), None
+    )
+    if not prefix:
+        raise ValueError("código de servidor inválido")
+    payload = json.loads(zlib.decompress(_dec(code[len(prefix):])).decode())
     if payload.get("version") != 1 or not payload.get("parts"):
         raise ValueError("manifiesto vacío o versión no soportada")
     payload["parts"] = sorted(payload["parts"], key=lambda p: int(p["index"]))

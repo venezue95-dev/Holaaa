@@ -35,30 +35,33 @@ rellena las variables de entorno antes de arrancar el bot. El token de
 Telegram y las contraseñas que estuvieron en versiones anteriores deben
 revocarse o cambiarse.
 
-`CHUNK_SIZE_MB` controla el tamaño máximo de cada volumen que se genera para
-archivos grandes. El flujo divide el archivo en chunks binarios crudos y después sube cada parte
-uno a uno a Moodle. El límite efectivo es el
-menor entre `CHUNK_SIZE_MB` y el límite `zips` configurado para la nube.
+El tamaño máximo de cada parte se toma directamente del límite `zips`
+configurado para la nube seleccionada. Si el archivo es menor que ese límite,
+se sube en una sola parte; si es mayor, se divide en partes del tamaño de esa
+nube. El flujo usa chunks binarios crudos y sube cada parte por separado a
+Moodle. `CHUNK_SIZE_MB` se conserva solo por compatibilidad con configuraciones
+anteriores y ya no limita el flujo principal.
 
 También se incluye `ChunkedMoodleUploader.py` como capa reutilizable y
 `chunk_code.py` para generar y reconstruir el código único de descarga.
 
 ### Descargar un código de chunks
 
-El resultado no es una URL HTTP nativa de Moodle: es un código `ETCHUNK1` que
+El resultado no es una URL HTTP nativa de Moodle: es un código con prefijo `https://5.4.3.2.1` que
 contiene el manifiesto de las partes. Para reconstruir el archivo en otro
 equipo:
 
 ```bash
 pip install -r requirements.txt
-python chunk_downloader.py 'ETCHUNK1:...'
+python chunk_downloader.py 'https://5.4.3.2.1...'
 ```
 
 También se puede indicar otro nombre de salida:
 
 ```bash
-python chunk_downloader.py 'ETCHUNK1:...' -o archivo_reconstruido.bin
+python chunk_downloader.py 'https://5.4.3.2.1...' -o archivo_reconstruido.bin
 ```
 
 El descargador ordena las partes, las descarga en streaming y verifica el
-tamaño final antes de terminar.
+tamaño final antes de terminar. Los códigos antiguos `REVISTA1:` y `ETCHUNK1:`
+siguen siendo aceptados.
