@@ -1,5 +1,5 @@
-from pyobigram.utils import sizeof_fmt,get_file_size,createID,nice_time
-from pyobigram.client import ObigramClient, inlineQueryResultArticle
+from bot_utils import sizeof_fmt,get_file_size,createID,nice_time
+from pyrogram_client import PyrogramBotClient
 from MoodleClient import MoodleClient, StopUploadException
 from JDatabase import JsonDatabase
 import os
@@ -1765,7 +1765,7 @@ def show_loading_progress(bot, message, step, total_steps=3):
     msg = loading_msgs[step-1] if step <= len(loading_msgs) else f"<b>Procesando... ({step}/{total_steps})</b>"
     bot.editMessageText(message, f"{msg} {bar}", parse_mode='html')
 
-def onmessage(update,bot:ObigramClient):
+def onmessage(update,bot:PyrogramBotClient):
     global MAINTENANCE_MODE, BANNED_USERS, REMOVED_USERS, ACTIVE_PROCESSES, ACTIVE_STATUS_CHECKS, CHANGING_CLOUD_USERS
     try:
         thread = bot.this_thread
@@ -1811,6 +1811,30 @@ def onmessage(update,bot:ObigramClient):
         if user_info.get('chat_id') != chat_id:
             user_info['chat_id'] = chat_id
             USER_CLOUD_OVERRIDES[username.lower()] = user_info
+
+        # Pyrogram entrega documentos y vídeos como archivos reales. El
+        # cliente anterior solo examinaba texto, por lo que esos mensajes se
+        # ignoraban. Descargarlos primero permite usar el mismo flujo Moodle
+        # que ya procesa los enlaces externos.
+        media = (
+            getattr(update.message, 'document', None)
+            or getattr(update.message, 'video', None)
+            or getattr(update.message, 'audio', None)
+            or getattr(update.message, 'animation', None)
+        )
+        if media:
+            original_name = getattr(media, 'file_name', None) or f"archivo_{update.message.message_id}"
+            original_name = os.path.basename(str(original_name)).replace('/', '_').replace('\\\\', '_')
+            os.makedirs('/tmp/upload_et', exist_ok=True)
+            local_path = os.path.join('/tmp/upload_et', f"{createID(12)}_{original_name}")
+            progress_message = bot.sendMessage(chat_id, '<b>📥 Recibiendo archivo...</b>', parse_mode='html')
+            thread.store('msg', progress_message)
+            downloaded_path = bot.downloadMessage(update.message, local_path)
+            if downloaded_path and os.path.isfile(downloaded_path):
+                processFile(update, bot, progress_message, downloaded_path, thread=thread)
+            else:
+                bot.editMessageText(progress_message, '<b>❌ No se pudo recibir el archivo.</b>', parse_mode='html')
+            return
 
         if '/cancel_' in msgText:
             try:
@@ -3713,7 +3737,7 @@ def onmessage(update,bot:ObigramClient):
         print(traceback.format_exc())
 
 def main():
-    bot = ObigramClient(BOT_TOKEN)
+    bot = PyrogramBotClient(BOT_TOKEN)
     bot.onMessage(onmessage)
     bot.run()
 

@@ -35,6 +35,11 @@ rellena las variables de entorno antes de arrancar el bot. El token de
 Telegram y las contraseñas que estuvieron en versiones anteriores deben
 revocarse o cambiarse.
 
+El transporte de Telegram usa **Pyrogram** real. Además de `BOT_TOKEN`, son
+obligatorios `TELEGRAM_API_ID` y `TELEGRAM_API_HASH`, obtenidos en
+`my.telegram.org`. El bot acepta enlaces escritos y también documentos,
+vídeos, audios y animaciones enviados directamente al chat.
+
 El tamaño máximo de cada parte se toma directamente del límite `zips`
 configurado para la nube seleccionada. Si el archivo es menor que ese límite,
 se sube en una sola parte; si es mayor, se divide en partes del tamaño de esa
@@ -47,21 +52,36 @@ También se incluye `ChunkedMoodleUploader.py` como capa reutilizable y
 
 ### Descargar un código de chunks
 
-El resultado no es una URL HTTP nativa de Moodle: es un código con prefijo `https://5.4.3.2.1` que
+El resultado no es una URL HTTP nativa de Moodle: es un código con prefijo `https://5.4.3.2.1:` que
 contiene el manifiesto de las partes. Para reconstruir el archivo en otro
 equipo:
 
 ```bash
 pip install -r requirements.txt
-python chunk_downloader.py 'https://5.4.3.2.1...'
+python chunk_downloader.py 'https://5.4.3.2.1:...'
 ```
 
 También se puede indicar otro nombre de salida:
 
 ```bash
-python chunk_downloader.py 'https://5.4.3.2.1...' -o archivo_reconstruido.bin
+python chunk_downloader.py 'https://5.4.3.2.1:...' -o archivo_reconstruido.bin
 ```
 
 El descargador ordena las partes, las descarga en streaming y verifica el
 tamaño final antes de terminar. Los códigos antiguos `REVISTA1:` y `ETCHUNK1:`
 siguen siendo aceptados.
+
+### Cobertura de URLs y límites
+
+El bot usa una ruta común con timeouts, reintentos limitados, nombres locales
+seguros, límite de tamaño (`MAX_DOWNLOAD_BYTES`, 2 GiB por defecto), bloqueo de
+hosts privados/reservados y validación de cada redirección. También reconoce
+MediaFire y Google Drive públicos, además de los enlaces que `yt-dlp` pueda
+resolver dentro de `YTDLP_ALLOWED_HOSTS`. La lista inicial incluye YouTube,
+Vimeo, Dailymotion, TikTok, Instagram, X, Facebook, Twitch, SoundCloud,
+Bandcamp y Reddit; ampliar esa lista no garantiza que el sitio funcione.
+
+No se habilitan cookies, contraseñas, CAPTCHA, DRM, paywalls, torrents ni
+proxies de evasión. Las herramientas como gallery-dl, Streamlink, aria2,
+Megatools, rclone y JDownloader deben instalarse y auditarse como adaptadores
+separados; no se ejecutan automáticamente desde una URL del usuario.
