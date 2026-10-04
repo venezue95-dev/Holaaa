@@ -1,33 +1,35 @@
-import re
-import bs4
+from __future__ import annotations
+
+from urllib.parse import urlparse
+
 import requests
-import user_agent
+from bs4 import BeautifulSoup
 
-def get(url):
-    if re.match("download[0-9]*\.mediafire\.com", url.lstrip("https://").lstrip("http://").split("/")[0]):
-        data = url.lstrip("https://").lstrip("http://").split("/")
-        if len(data) <= 2:
-            raise Exception("Invalid mediafire download url")
-        unique_id = data[2]
 
-    elif re.match("[w]*\.mediafire\.com", url.lstrip("https://").lstrip("http://").split("/")[0]):
-        data = url.lstrip("https://").lstrip("http://").split("/")
-        if len(data) <= 2:
-            raise Exception("Invalid mediafire download url")
-        unique_id = data[2]
+class MediaFireError(Exception):
+    pass
 
-    else:
-        raise Exception("No se encontro ningun link de descarga")
 
-    session = requests.Session()
-    session.headers["User-Agent"] = user_agent.generate_user_agent()
+def get(url: str) -> str:
+    parsed = urlparse((url or "").strip())
+    host = parsed.netloc.lower().split(":", 1)[0]
+    if not host.endswith("mediafire.com"):
+        raise MediaFireError("La URL no pertenece a MediaFire.")
 
-    data = session.get(f"https://www.mediafire.com/file/{unique_id}/")
-    wrp  = bs4.BeautifulSoup(data.text, "html.parser")
-    btn  = wrp.find("a", attrs = {"id": "downloadButton"})
-    if btn == None:
-       raise Exception("Invalid download url")
-    link = btn["href"]
+    parts = [p for p in parsed.path.split("/") if p]
+    if len(parts) < 2 or parts[0].lower() not in {"file", "view"}:
+        raise MediaFireError("No parece una página pública de archivo de MediaFire.")
 
-    return link
-
+    with requests.Session() as session:
+        session.headers.update({"User-Agent": "UploadET/2.0"})
+        response = session.get(
+            f"https://{host}{parsed.path}",
+            timeout=(20, 30),
+            allow_redirects=True,
+        )
+        response.raise_for_status()
+        soup = BeautifulSoup(response.text, "html.parser")
+        button = soup.select_one("a#downloadButton[href]")
+        if not button:
+            raise MediaFireError("MediaFire no mostró un enlace directo público.")
+        return button["href"]

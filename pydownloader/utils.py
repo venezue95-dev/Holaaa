@@ -1,71 +1,50 @@
-import time
 import os
 import re
 import unicodedata
-import re
+from urllib.parse import unquote, urlparse
 
 
 def slugify(value, allow_unicode=False):
-    """
-    Taken from https://github.com/django/django/blob/master/django/utils/text.py
-    Convert to ASCII if 'allow_unicode' is False. Convert spaces or repeated
-    dashes to single dashes. Remove characters that aren't alphanumerics,
-    underscores, or hyphens. Convert to lowercase. Also strip leading and
-    trailing whitespace, dashes, and underscores.
-    """
-    value = str(value)
-    ext = str(value).split('.')[-1]
-    value = str(value).split('.')[0]
+    value = str(value or "archivo_descargado").strip()
     if allow_unicode:
-        value = unicodedata.normalize('NFKC', value)
+        value = unicodedata.normalize("NFKC", value)
     else:
-        value = unicodedata.normalize('NFKD', value).encode('ascii', 'ignore').decode('ascii')
-    value = re.sub(r'[^\w\s-]', '', value.lower())
-    return re.sub(r'[-\s]+', '-', value).strip('-_') + '.' + ext
+        value = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode("ascii")
+    value = re.sub(r"[\x00-\x1f\\/:*?\"<>|]", "_", value)
+    value = re.sub(r"\s+", " ", value).strip(" .")
+    return value or "archivo_descargado"
 
 
-def sizeof_fmt(num, suffix='B'):
-    for unit in ['','Ki','Mi','Gi','Ti','Pi','Ei','Zi']:
+def sizeof_fmt(num, suffix="B"):
+    for unit in ["", "Ki", "Mi", "Gi", "Ti", "Pi", "Ei", "Zi"]:
         if abs(num) < 1024.0:
             return "%3.1f%s%s" % (num, unit, suffix)
         num /= 1024.0
-    return "%.1f%s%s" % (num, 'Yi', suffix)
+    return "%.1f%s%s" % (num, "Yi", suffix)
+
 
 def req_file_size(req):
     try:
-        return int(req.headers['content-length'])
-    except:
+        return max(0, int(req.headers.get("content-length", 0)))
+    except (TypeError, ValueError):
         return 0
 
-def get_url_file_name(url,req):
-    try:
-        if "Content-Disposition" in req.headers.keys():
-                name = str(req.headers["Content-Disposition"]).replace('attachment; ','')
-                name = name.replace('filename=','').replace('"','')
-                return name
-        else:
-            import urllib
-            urlfix = urllib.parse.unquote(url,encoding='utf-8', errors='replace')
-            tokens = str(urlfix).split('/');
-            return tokens[len(tokens)-1]
-    except:
-        import urllib
-        urlfix = urllib.parse.unquote(url,encoding='utf-8', errors='replace')
-        tokens = str(urlfix).split('/');
-        return tokens[len(tokens)-1]
-    return ''
+
+def get_url_file_name(url, req=None):
+    if req is not None:
+        disposition = req.headers.get("Content-Disposition", "")
+        match = re.search(r"filename\*=UTF-8''([^;]+)|filename=\"?([^\";]+)", disposition, re.I)
+        if match:
+            return slugify(unquote(match.group(1) or match.group(2)), allow_unicode=True)
+    name = os.path.basename(unquote(urlparse(url).path))
+    return slugify(name, allow_unicode=True) if name else "archivo_descargado"
+
 
 def get_file_size(file):
-    file_size = os.stat(file)
-    return file_size.st_size
+    return os.stat(file).st_size
+
 
 def createID(count=8):
     from random import randrange
-    map = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-    id = ''
-    i = 0
-    while i<count:
-        rnd = randrange(len(map))
-        id+=map[rnd]
-        i+=1
-    return id
+    alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    return "".join(alphabet[randrange(len(alphabet))] for _ in range(count))
