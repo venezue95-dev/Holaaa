@@ -17,3 +17,5 @@ beautifulsoup4
 
 python-dotenv
 pyrogram>=2.0,<3
+# Opcional: acelera Pyrogram, pero Railway puede funcionar sin compilarlo.
+# tgcrypto>=1.2
