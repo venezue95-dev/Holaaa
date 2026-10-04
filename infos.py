@@ -1,5 +1,6 @@
 import datetime
 import urllib.parse
+import html
 import time
 import os
 
@@ -98,8 +99,21 @@ def createFileMsg(filename, files):
     if len(files) > 0:
         msg = '<b>🔗 Enlaces de descarga:</b>\n'
         for f in files:
-            url = urllib.parse.unquote(f['directurl'], encoding='utf-8', errors='replace')
-            msg += f"<a href='{url}'><b>➥ {f['name']}</b></a>\n"
+            url = urllib.parse.unquote(f.get('directurl') or f.get('url') or '', encoding='utf-8', errors='replace')
+            name = html.escape(str(f.get('name') or filename), quote=False)
+            # El código https://5.4.3.2.1:... es un identificador copiable,
+            # no una URL HTTP real: Telegram lo interpreta erróneamente como
+            # host:puerto si se coloca dentro de <a href="...">.
+            if url.startswith('https://5.4.3.2.1:'):
+                safe_code = html.escape(url, quote=False)
+                msg += (
+                    f"<b>➥ {name}</b>\n"
+                    f"<i>Mantén pulsado para copiar el código completo:</i>\n"
+                    f"<code>{safe_code}</code>\n"
+                )
+            else:
+                safe_url = html.escape(url, quote=True)
+                msg += f"<a href=\"{safe_url}\"><b>➥ {name}</b></a>\n"
         return msg
     return ''
 
